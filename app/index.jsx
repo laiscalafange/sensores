@@ -28,12 +28,9 @@ export default function App() {
           });
 
           // Passos das últimas 24h
-          const end = new Date();
-          const start = new Date();
-          start.setDate(end.getDate() - 1);
-
-          const result = await Pedometer.getStepCountAsync(start, end);
-          setPastStepCount(result.steps);
+          Pedometer.watchStepCount(result => {
+  setStepCount(result.steps);
+});
         }
 
         // Magnetômetro (bússola)
