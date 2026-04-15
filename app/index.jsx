@@ -6,7 +6,7 @@ import usePedometer from '../hooks/usePedometer';
 
 export default function App() {
   const { graus, direcao } = useBussola();
-  const { ultPassosCont, passosAovivo } = usePedometer();
+  const { passosFiltrados } = usePedometer();
 
   return (
     <View>
@@ -15,8 +15,7 @@ export default function App() {
       <Text>Direção: {direcao}</Text>
 
       <Text>Pedômetro</Text>
-      <Text>Passos (24h): {ultPassosCont}</Text>
-      <Text>Passos em tempo real: {passosAovivo}</Text>
+      <Text>Passos: { passosFiltrados }</Text>
     </View>
   );
 }
