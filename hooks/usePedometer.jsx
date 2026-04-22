@@ -34,7 +34,7 @@ export default function usePedometer() {
     // 🔍 Primeiro: o celular pode ou não ter pedômetro 
     // // Então a gente pergunta: 
 
-    // 🟡 isAvailableAsync:
+    // isAvailableAsync:
     // Verifica se o celular tem pedômetro.
     // "Async" = demora um pouquinho e retorna depois (não é instantâneo)
     // O .then pega o resultado quando estiver pronto
