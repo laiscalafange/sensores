@@ -1,107 +1,67 @@
-import { useState, useEffect, useRef } from 'react';
-import { Pedometer } from 'expo-sensors';
-
-// Esse código cria um "hook" que lê os passos do celular // O celular tem um sensor físico (acelerômetro) que detecta movimento // O Pedometer usa esse sensor pra contar passos automaticamente 
-// 🟡 useRef:
-// É uma "caixinha" que guarda um valor que NÃO reinicia quando a tela atualiza.
-// Diferente do useState, ele NÃO faz a tela atualizar.
-// Usamos aqui para guardar um histórico de valores.
+import { useEffect, useState, useRef } from 'react';
+import { Accelerometer } from 'expo-sensors';
 
 export default function usePedometer() {
-  // 🟢 Guarda o número de passos "cru" 
-  // // Esse valor vem direto do sensor (pode ter erros/variações) 
 
-  const [passos, setPassos] = useState(0);
-  // 🟢 Guarda os passos depois de "tratados" 
-  // // Aqui a gente tenta deixar o valor mais estável (menos erro) 
+  // 📦 "steps" é a caixinha que guarda o número de passos na tela.
+  // Sempre que ela muda, a tela atualiza sozinha.
+  const [steps, setSteps] = useState(0);
 
-  const [passosFiltrados, setPassosFiltrados] = useState(0);
-  // 🟡 useRef = uma "caixa" que guarda valores sem resetar 
-  // // Aqui usamos pra guardar os últimos valores recebidos 
+  // 📝 "lastValue" é um bloco de rascunho — guarda a última
+  // intensidade de movimento lida. Não atualiza a tela quando muda.
+  const lastValue = useRef(0);
 
-  const historico = useRef([]);
-  // 🟡 Quantos valores vamos usar pra fazer a média 
-  // // Ex: 5 últimos valores const tamanhoFiltro = 5; 
-
-  const tamanhoFiltro = 5;
-
-  // 🟡 useEffect:
-  // É um lugar para executar algo automaticamente quando o componente inicia.
-  // Aqui usamos para começar a ler o sensor quando a tela abre.
-  // O [] significa: executa só UMA VEZ (quando inicia)
+  // ⏱️ Outro rascunho: guarda o horário exato do último passo detectado.
+  // Serve para evitar contar dois passos muito rápidos (tremor, por ex.)
+  const lastStepTime = useRef(0);
 
   useEffect(() => {
-    // 🔍 Primeiro: o celular pode ou não ter pedômetro 
-    // // Então a gente pergunta: 
+    // 🔁 Diz ao celular: "me manda dados do acelerômetro a cada 100ms"
+    // (ou seja, 10 vezes por segundo)
+    Accelerometer.setUpdateInterval(100);
 
-    // isAvailableAsync:
-    // Verifica se o celular tem pedômetro.
-    // "Async" = demora um pouquinho e retorna depois (não é instantâneo)
-    // O .then pega o resultado quando estiver pronto
-    Pedometer.isAvailableAsync().then((isAvailable) => {
-      // 👣 Aqui começa o mais importante: 
-      // // O app começa a "escutar" os passos em TEMPO REAL 
+    // 👂 Fica "ouvindo" o acelerômetro continuamente.
+    // Cada vez que chega um dado novo, essa função roda.
+    const subscription = Accelerometer.addListener(data => {
 
-      if (isAvailable) {
+      // 📐 x, y, z são as forças nos 3 eixos do espaço (esquerda/direita,
+      // frente/trás, cima/baixo). O celular mede tudo isso ao mesmo tempo.
+      const { x, y, z } = data;
 
-        const subscription = Pedometer.watchStepCount((result) => {
-         // 📥 O sensor manda um valor 
-        // // Ex: 100 passos, depois 102, depois 101... 
+      // 📏 Aqui juntamos os 3 eixos num único número: a "intensidade total"
+      // do movimento. É a fórmula de distância em 3D (Pitágoras estendido).
+      // Parado numa mesa: ≈ 1.0  |  Andando: oscila entre 0.5 e 2.0
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
 
-          const novoPasso = result.steps;
-          // 🟢 Guarda o valor direto (sem filtro) 
+      // 🔍 Compara a intensidade AGORA com a intensidade NA LEITURA ANTERIOR.
+      // Se o número variou muito → houve um movimento brusco → possível passo.
+      const diff = Math.abs(magnitude - lastValue.current);
 
-          setPassos(novoPasso);
-           // 🟡 Agora começa o TRATAMENTO dos dados 
-        // // Adiciona o valor novo no histórico 
-          // 🟡 .current:
-          // Tudo que está dentro do useRef fica em ".current"
-          // É assim que acessamos o valor guardado
-          historico.current.push(novoPasso);
-           // Se tiver mais que 5 valores, remove o mais antigo 
-        // // Isso mantém só os últimos dados 
+      // 🕐 Pega o horário atual em milissegundos
+      const now = Date.now();
 
-          if (historico.current.length > tamanhoFiltro) {
-            historico.current.shift();
-          }
-           // 📊 Aqui fazemos a MÉDIA dos valores 
-        // // Isso serve pra tirar "ruído" (erros do sensor) 
-
-          // 🟡 Essa "conta estranha" (média):
-          // Vamos simplificar:
-          // 1. Soma todos os valores do array
-          // 2. Divide pela quantidade de valores
-
-          // Exemplo:
-          // [100, 102, 101]
-          // soma = 303
-          // quantidade = 3
-          // média = 303 / 3 = 101
-
-          const soma = historico.current.reduce((a, b) => a + b, 0);
-          const media = soma / historico.current.length;
-          // 🟢 Guarda o valor filtrado (mais confiável) 
-
-          // 🟡 Math.round:
-          // Arredonda o número
-          // Ex:
-          // 101.2 → 101
-          // 101.7 → 102
-          setPassosFiltrados(Math.round(media));
-        });
-         // 🧹 Quando sair da tela, para de escutar o sensor 
-        // // Isso evita gastar bateria à toa 
-
-        return () => subscription.remove();
-        // ⚠️ Caso o celular não tenha pedômetro
-
-      } else {
-        console.warn('Pedômetro não disponível');
+      // ✅ Só conta como passo se AS DUAS condições forem verdadeiras:
+      if (
+        diff > 1.2 &&                        // 1) a variação foi grande o suficiente
+                                             //    (1.2 é o limiar — ajuste se quiser
+                                             //    mais ou menos sensibilidade)
+        now - lastStepTime.current > 400     // 2) já passaram 400ms desde o último
+                                             //    passo (evita contar tremores)
+      ) {
+        setSteps(prev => prev + 1);          // 🦶 conta +1 passo!
+        lastStepTime.current = now;          // 📌 registra o horário deste passo
       }
+
+      // 💾 Salva a intensidade atual para comparar na próxima leitura
+      lastValue.current = magnitude;
     });
 
-  }, []);
-// 🚀 Executa só uma vez quando o app inicia 
-          // // 📤 Retorna os dois valores
-  return { passos, passosFiltrados };
+    // 🧹 Quando o componente sair da tela, para de ouvir o acelerômetro
+    // (economiza bateria e evita erros)
+    return () => subscription.remove();
+
+  }, []); // ← o [] significa "roda isso só uma vez, quando a tela abrir"
+
+  // 📤 Devolve os passos para quem usar esse hook poder exibir na tela
+  return { steps };
 }
