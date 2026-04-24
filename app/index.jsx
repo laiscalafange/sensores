@@ -13,7 +13,7 @@ export default function App() {
   <Text style={styles.titulo}>Bússola</Text>
   <Text style={styles.texto}>Graus: {graus}°</Text>
   <Text style={styles.texto}>Direção: {direcao}</Text>
-  <Text style={styles.titulo}>Pedômetro</Text>
+  <Text style={styles.titulo}>Conta passos</Text>
   <Text style={styles.texto}>Passos: {passos}</Text>
 </View>
   );
@@ -22,17 +22,26 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center', 
+    backgroundColor: '#3a3939', 
     padding: 20,
   },
 
   titulo: {
-    fontSize: 20,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginTop: 20,
+    color: '#ffffff', 
+    borderRadius:2,
+    marginBottom: 10,
+    textAlign: 'center',
   },
 
   texto: {
-    fontSize: 16,
-    marginTop: 5,
+    fontSize: 20,
+    color: '#15ff00',
+    backgroundColor: '#047400', 
+    textAlign: 'center',
+    marginBottom: 5,
   }
 });
